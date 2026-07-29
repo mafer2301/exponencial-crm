@@ -258,7 +258,18 @@
   .fcd-table th{font-size:10.5px; padding:9px 10px}
   .fcd-table td{padding:9px 10px}
   .fcd-cat{font-family:var(--font-d); font-weight:800; font-size:12.5px; padding:10px 10px 4px; color:var(--ink-soft)}
-  .grupo-row{display:flex; gap:8px; align-items:center; margin-bottom:6px}
+  .grupo-row{display:grid; grid-template-columns:80px 110px 110px 110px; gap:8px; align-items:center; margin-bottom:6px}
+  .grupo-row label{margin:0}
+  .grupo-head, .mod-head{display:grid; gap:8px; font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:4px}
+  .grupo-head{grid-template-columns:80px 110px 110px 110px}
+  .mod-head{grid-template-columns:80px 1fr 130px}
+  .mod-row{display:grid; grid-template-columns:80px 1fr 130px; gap:8px; align-items:center; margin-bottom:6px}
+  .mod-row label{margin:0}
+  .clase-auto-head{display:grid; grid-template-columns:52px 110px 52px 56px 1fr 128px 1fr; gap:6px; font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:4px}
+  .clase-auto-row{display:grid; grid-template-columns:52px 110px 52px 56px 1fr 128px 1fr; gap:6px; margin-bottom:6px; align-items:center}
+  .clase-auto-row .ro{background:#F2F4F1; border-radius:9px; padding:9px 8px; font-size:12px; font-weight:700; color:var(--ink-soft); text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+  .clase-auto-row .ro.izq{text-align:left}
+  .clase-auto-row input{padding:8px 9px; font-size:12.5px}
   .grupo-row label{margin:0; min-width:70px}
   .cover-prev{height:90px; border-radius:12px; background-size:cover; background-position:center; border:1px dashed var(--line); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px}
 
@@ -823,15 +834,24 @@
       <div><label for="p-portada">Imagen de portada</label><input type="file" id="p-portada" accept="image/*"></div>
       <div class="full"><div class="cover-prev" id="p-portada-prev">Vista previa de la portada</div></div>
       <div><label for="p-tipoprog">Tipo de programa</label><select id="p-tipoprog"></select></div>
-      <div><label for="p-horas">Número de horas</label><input id="p-horas" type="number" min="0" step="0.5"></div>
-      <div><label for="p-sesiones">Número total de sesiones</label><input id="p-sesiones" type="number" min="0"></div>
+      <div><label for="p-horas">Número de horas totales</label><input id="p-horas" type="number" min="0" step="0.5"></div>
       <div><label for="p-grupos">Número de grupos</label><input id="p-grupos" type="number" min="1" value="1"></div>
-      <div class="full"><label>Personas por grupo</label><div id="p-grupos-rows"></div></div>
-      <div class="full">
-        <label>Clases del programa</label>
-        <div class="clase-head"><span>Fecha</span><span>Inicio</span><span>Fin</span><span>Módulo</span><span>Sesión</span><span>Grupo</span><span>Profesor(es)</span><span></span></div>
+      <div class="full"><label>Grupos: personas y horario de sesiones</label>
+        <div class="grupo-head"><span></span><span>Personas</span><span>Hora inicio</span><span>Hora fin</span></div>
+        <div id="p-grupos-rows"></div>
+      </div>
+      <div class="full" style="border-top:1px solid var(--line); padding-top:14px">
+        <label for="p-modulos">Módulos / bloques — Número de módulos/bloques</label>
+        <input id="p-modulos" type="number" min="1" value="1" style="max-width:180px">
+        <div class="mod-head" style="margin-top:8px"><span></span><span>Nombre del módulo/bloque</span><span>No. de sesiones</span></div>
+        <div id="p-modulos-rows"></div>
+      </div>
+      <div class="full" style="border-top:1px solid var(--line); padding-top:14px">
+        <label>Distribución de clases</label>
+        <p class="t-sub" style="margin:2px 0 8px">El sistema genera las filas por módulo, sesión y grupo, con su horario. Tú solo capturas la fecha y el profesor.</p>
+        <button class="btn btn-outline btn-sm" id="p-gen-clases" type="button">Generar distribución de clases</button>
+        <div class="clase-auto-head" style="margin-top:10px"><span>Grupo</span><span>Horario</span><span>Sesión</span><span>Módulo</span><span>Nombre del módulo</span><span>Fecha</span><span>Profesor(es)</span></div>
         <div id="p-clases-rows"></div>
-        <button class="btn btn-outline btn-sm" id="p-add-clase" style="margin-top:6px">+ Agregar clase</button>
       </div>
     </div>
     <div class="modal-foot">
@@ -1892,29 +1912,75 @@ function renderProyectos(){
 }
 
 /* ---------- Formulario de proyecto ---------- */
-function grupoRows(n, valores){
+function grupoRows(n, personas, horarios){
   $("p-grupos-rows").innerHTML = Array.from({length:Math.max(1,n)}, (_,i)=>`
     <div class="grupo-row"><label>Grupo ${i+1}</label>
-    <input type="number" min="0" class="p-personas" placeholder="Personas" value="${valores && valores[i]!==undefined ? valores[i] : ""}"></div>`).join("");
+    <input type="number" min="0" class="p-personas" placeholder="Personas" value="${personas && personas[i]!==undefined ? personas[i] : ""}">
+    <input type="time" class="p-hini" value="${horarios && horarios[i] ? (horarios[i].inicio||"") : ""}">
+    <input type="time" class="p-hfin" value="${horarios && horarios[i] ? (horarios[i].fin||"") : ""}"></div>`).join("");
+}
+function leerGrupos(){
+  return {
+    personas: [...document.querySelectorAll(".p-personas")].map(i=>Number(i.value||0)),
+    horarios: [...document.querySelectorAll(".grupo-row")].map(r=>({ inicio:r.querySelector(".p-hini").value, fin:r.querySelector(".p-hfin").value }))
+  };
 }
 $("p-grupos").addEventListener("input", ()=>{
-  const vals=[...document.querySelectorAll(".p-personas")].map(i=>i.value);
-  grupoRows(Number($("p-grupos").value||1), vals);
+  const g=leerGrupos();
+  grupoRows(Number($("p-grupos").value||1), g.personas, g.horarios);
 });
-function claseRow(c){
-  const d=document.createElement("div"); d.className="clase-row";
-  d.innerHTML = `<input type="date" class="c-fecha" value="${c?.fecha||""}">
-    <input type="time" class="c-ini" value="${c?.hora_inicio||""}">
-    <input type="time" class="c-fin" value="${c?.hora_fin||""}">
-    <input class="c-mod" placeholder="Módulo" value="${esc(c?.modulo||"")}">
-    <input type="number" min="1" class="c-ses" placeholder="#" value="${c?.num_sesion||""}">
-    <input type="number" min="1" class="c-gpo" placeholder="#" value="${c?.grupo||""}">
-    <input class="c-prof" placeholder="Profesor(es)" value="${esc(c?.profesores||"")}">
-    <button class="btn-x" title="Quitar clase">✕</button>`;
-  d.querySelector(".btn-x").onclick=()=>d.remove();
+
+function moduloRows(n, datos){
+  $("p-modulos-rows").innerHTML = Array.from({length:Math.max(1,n)}, (_,i)=>`
+    <div class="mod-row"><label>Módulo ${i+1}</label>
+    <input class="p-mod-nombre" placeholder="Nombre del módulo/bloque" value="${datos && datos[i] ? esc(datos[i].nombre||"") : ""}">
+    <input type="number" min="1" class="p-mod-ses" placeholder="Sesiones" value="${datos && datos[i] ? (datos[i].sesiones||"") : ""}"></div>`).join("");
+}
+function leerModulos(){
+  return [...document.querySelectorAll(".mod-row")].map(r=>({
+    nombre:r.querySelector(".p-mod-nombre").value.trim(),
+    sesiones:Number(r.querySelector(".p-mod-ses").value||0)
+  }));
+}
+$("p-modulos").addEventListener("input", ()=>moduloRows(Number($("p-modulos").value||1), leerModulos()));
+
+function claseAutoRow(auto, valores){
+  const d=document.createElement("div"); d.className="clase-auto-row";
+  d.dataset.grupo=auto.grupo; d.dataset.sesion=auto.sesion; d.dataset.modnum=auto.modNum;
+  d.innerHTML = `<span class="ro">G${auto.grupo}</span>
+    <span class="ro">${auto.horario||"—"}</span>
+    <span class="ro">${auto.sesion}</span>
+    <span class="ro">M${auto.modNum}</span>
+    <span class="ro izq" title="${esc(auto.modNombre)}">${esc(auto.modNombre)||"—"}</span>
+    <input type="date" class="ca-fecha" value="${valores?.fecha||""}">
+    <input class="ca-prof" placeholder="Profesor(es)" value="${esc(valores?.profesores||"")}">`;
   $("p-clases-rows").appendChild(d);
 }
-$("p-add-clase").addEventListener("click", ()=>claseRow(null));
+function generarClases(existentes){
+  const g=leerGrupos();
+  const nG=Number($("p-grupos").value||1);
+  const mods=leerModulos().filter(m=>m.nombre || m.sesiones);
+  if(!mods.length){ toast("Captura primero los módulos/bloques y sus sesiones."); return; }
+  /* Conservar fecha y profesor ya capturados (por módulo+sesión+grupo) */
+  const previos={};
+  document.querySelectorAll("#p-clases-rows .clase-auto-row").forEach(r=>{
+    previos[r.dataset.modnum+"|"+r.dataset.sesion+"|"+r.dataset.grupo]={ fecha:r.querySelector(".ca-fecha").value, profesores:r.querySelector(".ca-prof").value };
+  });
+  (existentes||[]).forEach(c=>{ previos[(c.__modnum||"?")+"|"+(c.num_sesion||1)+"|"+(c.grupo||1)] = { fecha:c.fecha||"", profesores:c.profesores||"" }; });
+  $("p-clases-rows").innerHTML="";
+  mods.forEach((m,mi)=>{
+    for(let s=1; s<=Math.max(1,m.sesiones||1); s++){
+      for(let gi=1; gi<=nG; gi++){
+        const hor=g.horarios[gi-1];
+        claseAutoRow({ grupo:gi, sesion:s, modNum:mi+1, modNombre:m.nombre,
+          horario:(hor&&hor.inicio&&hor.fin)?hor.inicio+"–"+hor.fin:"" },
+          previos[(mi+1)+"|"+s+"|"+gi]);
+      }
+    }
+  });
+}
+$("p-gen-clases").addEventListener("click", ()=>generarClases());
+
 $("p-portada").addEventListener("change", e=>{
   const file=e.target.files[0]; if(!file) return;
   const img=new Image(); const rd=new FileReader();
@@ -1936,16 +2002,42 @@ function openProjModal(p){
   $("p-nombre").value=p?.nombre||""; $("p-empresa").value=p?.empresa||"";
   $("p-color").value=p?.color||"#1D5B3C";
   $("p-tipoprog").value=p?.tipo_programa||S.tipos[0]?.nombre||"";
-  $("p-horas").value=p?.horas||""; $("p-sesiones").value=p?.sesiones||"";
+  $("p-horas").value=p?.horas||"";
   const nG = p?.grupos||1; $("p-grupos").value=nG;
-  let vals=[]; try{ vals=JSON.parse(p?.personas_grupos||"[]"); }catch(e){}
-  grupoRows(nG, vals);
+  let personas=[], horarios=[];
+  try{ personas=JSON.parse(p?.personas_grupos||"[]"); }catch(e){}
+  try{ horarios=JSON.parse(p?.horarios_grupos||"[]"); }catch(e){}
+  const clasesExist = p ? projClases(p) : [];
+  if(!horarios.length && clasesExist.length){
+    /* proyectos anteriores: deducir el horario de cada grupo desde sus clases */
+    horarios = Array.from({length:nG}, (_,i)=>{
+      const c = clasesExist.find(x=>(x.grupo||1)===i+1 && x.hora_inicio);
+      return c ? { inicio:c.hora_inicio||"", fin:c.hora_fin||"" } : { inicio:"", fin:"" };
+    });
+  }
+  grupoRows(nG, personas, horarios);
+  let mods=[];
+  try{ mods=JSON.parse(p?.modulos||"[]"); }catch(e){}
+  if(!mods.length && clasesExist.length){
+    /* deducir módulos desde las clases existentes */
+    const orden=[]; const cuenta={};
+    clasesExist.forEach(c=>{ const n=c.modulo||"Módulo"; if(!orden.includes(n)) orden.push(n);
+      cuenta[n]=Math.max(cuenta[n]||0, Number(c.num_sesion||1)); });
+    mods = orden.map(n=>({ nombre:n, sesiones:cuenta[n]||1 }));
+  }
+  if(!mods.length) mods=[{nombre:"", sesiones:""}];
+  $("p-modulos").value = mods.length;
+  moduloRows(mods.length, mods);
   $("p-portada").value="";
   $("p-portada-prev").style.backgroundImage = projPortadaData ? `url('${projPortadaData}')` : "none";
   $("p-portada-prev").textContent = projPortadaData ? "" : "Vista previa de la portada";
   $("p-clases-rows").innerHTML="";
-  (p ? projClases(p) : []).forEach(c=>claseRow(c));
-  if(!p) claseRow(null);
+  if(clasesExist.length){
+    /* mapear clases existentes a la distribución (módulo -> índice) */
+    const nombres = mods.map(m=>m.nombre);
+    const conMod = clasesExist.map(c=>({ ...c, __modnum: (nombres.indexOf(c.modulo)+1)||1 }));
+    generarClases(conMod);
+  }
   $("modal-proj").classList.add("open");
 }
 $("btn-new-proj").addEventListener("click",()=>openProjModal(null));
@@ -1955,12 +2047,17 @@ $("modal-proj").addEventListener("click",e=>{ if(e.target===$("modal-proj")) $("
 $("proj-save").addEventListener("click", async ()=>{
   const nombre=$("p-nombre").value.trim(), empresa=$("p-empresa").value.trim();
   if(!nombre || !empresa){ toast("Nombre del programa y empresa son obligatorios."); return; }
-  const personas=[...document.querySelectorAll(".p-personas")].map(i=>Number(i.value||0));
+  const g=leerGrupos();
+  const mods=leerModulos().filter(m=>m.nombre || m.sesiones);
+  const sesionesTot = mods.reduce((s,m)=>s+Number(m.sesiones||0),0);
   const payload={
     nombre, empresa, color:$("p-color").value, portada:projPortadaData,
     tipo_programa:$("p-tipoprog").value, horas:Number($("p-horas").value||0)||null,
-    sesiones:Number($("p-sesiones").value||0)||null, grupos:Number($("p-grupos").value||1),
-    personas_grupos:JSON.stringify(personas), updated_at:new Date().toISOString()
+    sesiones:sesionesTot||null, grupos:Number($("p-grupos").value||1),
+    personas_grupos:JSON.stringify(g.personas),
+    horarios_grupos:JSON.stringify(g.horarios),
+    modulos:JSON.stringify(mods),
+    updated_at:new Date().toISOString()
   };
   let projId=editingProjId, error;
   if(editingProjId){ ({error} = await db.from("proyectos").update(payload).eq("id",editingProjId)); }
@@ -1969,18 +2066,23 @@ $("proj-save").addEventListener("click", async ()=>{
     error=res.error; projId=res.data?.id;
   }
   if(error){ toast("No se pudo guardar: "+error.message); return; }
-  /* Clases: se reemplazan con lo capturado en el formulario */
+  /* Clases: se reemplazan con la distribución generada (solo filas con fecha o profesor) */
   await db.from("clases").delete().eq("proyecto_id",projId);
-  const filas=[...document.querySelectorAll("#p-clases-rows .clase-row")].map(r=>({
-    proyecto_id:projId,
-    fecha:r.querySelector(".c-fecha").value||null,
-    hora_inicio:r.querySelector(".c-ini").value||null,
-    hora_fin:r.querySelector(".c-fin").value||null,
-    modulo:r.querySelector(".c-mod").value.trim(),
-    num_sesion:Number(r.querySelector(".c-ses").value||0)||null,
-    grupo:Number(r.querySelector(".c-gpo").value||0)||null,
-    profesores:r.querySelector(".c-prof").value.trim()
-  })).filter(c=>c.fecha || c.modulo);
+  const filas=[...document.querySelectorAll("#p-clases-rows .clase-auto-row")].map(r=>{
+    const gi=Number(r.dataset.grupo), mi=Number(r.dataset.modnum);
+    const hor=g.horarios[gi-1]||{};
+    const mod=mods[mi-1]||{};
+    return {
+      proyecto_id:projId,
+      fecha:r.querySelector(".ca-fecha").value||null,
+      hora_inicio:hor.inicio||null,
+      hora_fin:hor.fin||null,
+      modulo:mod.nombre||("Módulo "+mi),
+      num_sesion:Number(r.dataset.sesion)||null,
+      grupo:gi||null,
+      profesores:r.querySelector(".ca-prof").value.trim()
+    };
+  }).filter(c=>c.fecha || c.profesores);
   if(filas.length){ const r2=await db.from("clases").insert(filas); if(r2.error){ toast("Clases: "+r2.error.message); } }
   $("modal-proj").classList.remove("open");
   toast(editingProjId ? "Proyecto actualizado." : "Proyecto creado.");
@@ -2041,7 +2143,7 @@ function renderProyectoDetalle(){
   const stat=(l,v)=>`<div class="pd-statcard" style="border-top-color:${col}"><div class="m-label">${l}</div><div class="m-value">${v}</div></div>`;
   $("pd-stats").innerHTML =
     stat("Tipo de programa", esc(p.tipo_programa)||"—") +
-    stat("Horas", p.horas||"—") +
+    stat("Horas totales", p.horas||"—") +
     stat("Sesiones", (pc.total||p.sesiones||"—") + (pc.total?` <span style="font-size:11px; color:var(--muted)">(${pc.hechas} impartidas)</span>`:"")) +
     stat("Grupos", p.grupos||"—") +
     stat("Personas", personasTotales(p)||"—") +
