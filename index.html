@@ -1872,8 +1872,19 @@ const PK_COLS = ["Pendiente","En progreso","Necesita revisión","Terminado"];
 const nowTime = () => new Date().toTimeString().slice(0,5);
 
 function tpendColor(nombre){ const t=S.tpend.find(x=>x.nombre===nombre); return (t&&t.color)||"#6B7770"; }
-function projClases(p){ return S.clases.filter(c=>c.proyecto_id===p.id).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||"") || (a.hora_inicio||"").localeCompare(b.hora_inicio||"")); }
-function projFechas(p){ const cs=projClases(p); return cs.length ? {ini:cs[0].fecha, fin:cs[cs.length-1].fecha} : {ini:null, fin:null}; }
+function projClases(p){ return S.clases.filter(c=>c.proyecto_id===p.id).sort((a,b)=>(a.fecha||"9999-99").localeCompare(b.fecha||"9999-99") || (a.hora_inicio||"").localeCompare(b.hora_inicio||"")); }
+function projModOrden(p){
+  let nombres=[]; try{ nombres=(JSON.parse(p.modulos||"[]")).map(m=>m.nombre).filter(Boolean); }catch(e){}
+  projClases(p).forEach(c=>{ const n=c.modulo||"Sin módulo"; if(!nombres.includes(n)) nombres.push(n); });
+  return nombres;
+}
+function projClasesOrdenPrograma(p){
+  const orden=projModOrden(p);
+  return projClases(p).slice().sort((a,b)=>
+    (orden.indexOf(a.modulo||"Sin módulo") - orden.indexOf(b.modulo||"Sin módulo")) ||
+    ((a.num_sesion||0)-(b.num_sesion||0)) || ((a.grupo||0)-(b.grupo||0)));
+}
+function projFechas(p){ const cs=projClases(p).filter(c=>c.fecha); return cs.length ? {ini:cs[0].fecha, fin:cs[cs.length-1].fecha} : {ini:null, fin:null}; }
 function claseEjecutada(c){ const hoy=todayISO(); return c.fecha < hoy || (c.fecha===hoy && c.hora_fin && c.hora_fin <= nowTime()); }
 function projProgresoClases(p){ const cs=projClases(p); return { total:cs.length, hechas:cs.filter(claseEjecutada).length }; }
 function projPends(p){ return S.ppend.filter(x=>x.proyecto_id===p.id); }
@@ -2151,7 +2162,7 @@ function renderProyectoDetalle(){
     stat("Fin", fe.fin?fmtDate(fe.fin):"—");
 
   /* Gantt de impartición (lunes a viernes) */
-  const cs=projClases(p);
+  const cs=projClasesOrdenPrograma(p);
   if(!cs.length || !fe.ini){
     $("pd-gantt-rango").textContent="";
     $("pd-gantt").innerHTML='<div class="empty-note">Captura las clases del programa para generar su Gantt.</div>';
@@ -2200,8 +2211,8 @@ function renderProyectoDetalle(){
     $("pd-gantt").innerHTML=html;
   }
 
-  /* Distribución por módulo: número + avatares por profesor */
-  const mods=[]; cs.forEach(c=>{ const mName=c.modulo||"Sin módulo"; if(!mods.includes(mName)) mods.push(mName); });
+  /* Distribución por módulo: número + avatares por profesor, en el orden de captura */
+  const mods=projModOrden(p).filter(mName=>cs.some(c=>(c.modulo||"Sin módulo")===mName));
   $("pd-modulos").innerHTML = mods.length ? mods.map((mName,mi)=>{
     const del=cs.filter(c=>(c.modulo||"Sin módulo")===mName);
     const gruposM={}; del.forEach(c=>{ const g=c.grupo||0; (gruposM[g]=gruposM[g]||[]).push(c); });
