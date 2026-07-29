@@ -919,13 +919,18 @@
 
 <script>
 /* =====================================================================
-   CONFIGURACIÓN — PEGA AQUÍ TUS DOS CLAVES DE SUPABASE (ver guía, Paso 2)
+   CONFIGURACIÓN DE SUPABASE
+   Las dos claves de este proyecto ya están integradas.
+   Si algún día cambias de proyecto de Supabase:
+   1) SUPABASE_URL: Project Settings → Data API → Project URL
+      (forma exacta: https://tuproyecto.supabase.co — nada después de .co)
+   2) SUPABASE_ANON_KEY: Project Settings → API Keys → Publishable key
    ===================================================================== */
 const SUPABASE_URL = "https://naqgunxiodtziubjbntd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_lrAG6uiO_uRzK2ZXxvYI3Q_H-BkZVKT";
-/* ===================================================================== */
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const $ = id => document.getElementById(id);
 const fmtMXN = new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0});
 const fmtDate = d => d ? new Date(d+"T00:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"2-digit"}) : "—";
@@ -1005,6 +1010,7 @@ async function doLogin(){
     if(m.includes("invalid login credentials")) diag = "Correo o contraseña incorrectos. Revisa el usuario en Supabase (Authentication → Users) y que esté confirmado.";
     else if(m.includes("email not confirmed")) diag = "El usuario existe pero no está confirmado. En Supabase elimínalo y créalo de nuevo con la casilla Auto Confirm User marcada.";
     else if(m.includes("api key") || m.includes("apikey") || m.includes("jwt")) diag = "La clave de la línea 925 (SUPABASE_ANON_KEY) no es válida para este proyecto. Copia de nuevo la Publishable key en Project Settings → API Keys.";
+    else if(m.includes("invalid path")) diag = "La liga de SUPABASE_URL trae caracteres o camino de más. Debe ser exactamente https://tuproyecto.supabase.co, sin nada después de .co.";
     else if(m.includes("fetch") || m.includes("network") || m.includes("resolve")) diag = "No se pudo contactar a Supabase. La liga de la línea 924 (SUPABASE_URL) no corresponde a un proyecto activo: verifícala en Project Settings → Data API.";
     else diag = "Error técnico: " + (error.message||error);
     err.textContent = diag; err.style.display="block"; return;
