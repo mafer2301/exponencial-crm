@@ -41,6 +41,15 @@
   .btn-sm{padding:7px 14px; font-size:12.5px}
   .pill{font-size:11px; font-weight:700; padding:3px 11px; border-radius:999px; white-space:nowrap; display:inline-block}
   .vip-badge{background:linear-gradient(135deg,#F2DFA8,#D9B44A); color:#5C4708; font-size:10.5px; font-weight:800; letter-spacing:.05em; border-radius:999px; padding:3px 11px; display:inline-block}
+  .vip-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  .vip-card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; cursor:pointer; border-top:4px solid #D9B44A; transition:box-shadow .15s, transform .15s}
+  .vip-card:hover{box-shadow:0 12px 30px rgba(20,30,24,.16); transform:translateY(-2px)}
+  .vip-card .vc-name{font-family:var(--font-d); font-weight:800; font-size:15px; margin-top:9px}
+  .vip-card .vc-sub{font-size:12.5px; color:var(--ink-soft); margin-top:2px}
+  .vip-card .vc-pills{display:flex; gap:6px; flex-wrap:wrap; margin-top:11px}
+  .vip-card .vc-foot{display:flex; justify-content:space-between; align-items:center; margin-top:11px; font-size:11.5px; color:var(--muted); font-weight:600}
+  @media (max-width:1020px){ .vip-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:640px){ .vip-grid{grid-template-columns:1fr} }
 
   /* ============ LOGIN ============ */
   #login-view{min-height:100vh; display:flex; align-items:center; justify-content:center; background:
@@ -493,7 +502,7 @@
       <div class="toolbar">
         <input type="search" id="vip-search" placeholder="Buscar nombre, empresa, correo…">
         <select id="vip-estado">
-          <option value="Activo">Activos (kanban)</option>
+          <option value="Activo">Activos (tarjetas)</option>
           <option value="Descartado">Descartados</option>
           <option value="">Todos (lista)</option>
         </select>
@@ -1345,53 +1354,29 @@ function renderVip(){
   const q=$("vip-search").value.trim().toLowerCase(), fe=$("vip-estado").value;
   const base=S.leads.filter(l=> l.vip &&
     (!q || [fullName(l), l.empresa, l.correo, l.puesto].some(v=>(v||"").toLowerCase().includes(q))));
-  const kanban = fe==="Activo";
-  $("vip-kanban").style.display = kanban ? "block" : "none";
-  $("vip-table-card").style.display = kanban ? "none" : "block";
+  const tarjetas = fe==="Activo";
+  $("vip-kanban").style.display = tarjetas ? "block" : "none";
+  $("vip-table-card").style.display = tarjetas ? "none" : "block";
 
-  if(kanban){
+  if(tarjetas){
     const rows=base.filter(l=>l.estado==="Activo");
-    $("vip-kanban").innerHTML = '<div class="kanban">' + S.fases.map(f=>{
-      const items=rows.filter(l=>l.fase===f.nombre);
-      return `<div class="kcol" data-vfase="${esc(f.nombre)}">
-        <div class="kcol-head">
-          <span class="kcol-title">${esc(f.nombre)}</span>
-          <span class="kcol-count">${items.length}</span>
+    $("vip-kanban").innerHTML = rows.length ? '<div class="vip-grid">' + rows.map(l=>{
+      const seg=lastSeg(l.id);
+      return `<div class="vip-card" data-vkid="${l.id}">
+        <span class="vip-badge">★ VIP</span>
+        <div class="vc-name">${esc(leadLabel(l))}</div>
+        <div class="vc-sub">${[esc(l.empresa), esc(l.puesto)].filter(Boolean).join(" · ")||"—"}</div>
+        <div class="vc-pills">
+          <span class="pill" style="background:${tagColor(l.etiqueta)}1A; color:${tagColor(l.etiqueta)}">${esc(l.etiqueta)||"—"}</span>
+          <span class="pill" style="background:var(--green-pale); color:var(--green)">${esc(l.fase)||"—"}</span>
         </div>
-        ${items.map(l=>{
-          const seg=lastSeg(l.id);
-          return `<div class="kcard" draggable="true" data-vkid="${l.id}" style="border-left-color:#D9B44A">
-            <span class="vip-badge" style="font-size:9px; padding:1px 8px">★ VIP</span>
-            <div class="kc-name" style="margin-top:5px">${esc(leadLabel(l))}</div>
-            <div class="kc-sub">${esc(l.empresa)||"—"}</div>
-            <div class="kc-foot">
-              <span class="pill" style="background:${tagColor(l.etiqueta)}1A; color:${tagColor(l.etiqueta)}">${esc(l.etiqueta)||"—"}</span>
-              <span class="kc-date">${seg?fmtDate(seg.fecha):""}</span>
-            </div>
-          </div>`;
-        }).join("")}
+        <div class="vc-foot">
+          <span>${esc(l.correo)||esc(l.telefono)||""}</span>
+          <span>${seg ? "Últ. seguimiento: "+fmtDate(seg.fecha) : "Sin seguimientos"}</span>
+        </div>
       </div>`;
-    }).join("") + '</div>';
-    document.querySelectorAll("[data-vkid]").forEach(card=>{
-      card.addEventListener("dragstart", e=>{ card.classList.add("dragging"); e.dataTransfer.setData("text/plain", card.dataset.vkid); });
-      card.addEventListener("dragend", ()=>card.classList.remove("dragging"));
-      card.addEventListener("click", ()=>openDrawer(card.dataset.vkid));
-    });
-    document.querySelectorAll("[data-vfase]").forEach(col=>{
-      col.addEventListener("dragover", e=>{ e.preventDefault(); col.classList.add("dragover"); });
-      col.addEventListener("dragleave", ()=>col.classList.remove("dragover"));
-      col.addEventListener("drop", async e=>{
-        e.preventDefault(); col.classList.remove("dragover");
-        const id=e.dataTransfer.getData("text/plain");
-        const l=S.leads.find(x=>x.id===id);
-        const fase=col.dataset.vfase;
-        if(!l || l.fase===fase) return;
-        await db.from("seguimientos").insert({ lead_id:id, fase, fecha:todayISO(), comentario:"Cambio de fase desde el pipeline VIP" });
-        await db.from("leads").update({ fase, updated_at:new Date().toISOString() }).eq("id",id);
-        toast("Movido a: "+fase+".");
-        await loadAll();
-      });
-    });
+    }).join("") + '</div>' : '<div class="empty-note">Sin contactos VIP activos. Agrégalos directo o con "Pasar a VIP" desde la ficha de un lead.</div>';
+    document.querySelectorAll("[data-vkid]").forEach(card=>card.addEventListener("click",()=>openDrawer(card.dataset.vkid)));
     return;
   }
 
@@ -1413,6 +1398,101 @@ function renderVip(){
   document.querySelectorAll("[data-vip-open]").forEach(tr=>tr.addEventListener("click",()=>openDrawer(tr.dataset.vipOpen)));
   document.querySelectorAll("[data-vip-open2]").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); openDrawer(b.dataset.vipOpen2); }));
 }
+
+function renderLeadsView(){
+  $("leads-table-card").style.display = leadsViewMode==="lista" ? "block" : "none";
+  $("leads-kanban").style.display = leadsViewMode==="pipeline" ? "block" : "none";
+  $("leads-cuentas").style.display = leadsViewMode==="cuentas" ? "block" : "none";
+  if(leadsViewMode==="lista") renderLeadsTable();
+  else if(leadsViewMode==="pipeline") renderLeadsKanban();
+  else renderCuentas();
+}
+
+/* ---------------- VISTA CUENTAS (empresas / instituciones) ---------------- */
+let openCuentaName = null;
+
+function cuentaPendientes(empresa, leadsGrupo){
+  const ids = new Set(leadsGrupo.map(l=>l.id));
+  return S.pendientes.filter(p => (p.empresa && p.empresa===empresa) || (p.lead_id && ids.has(p.lead_id)));
+}
+function renderCuentas(){
+  const rows = filteredLeads();
+  const map = {};
+  rows.forEach(l=>{ const e=(l.empresa||"").trim()||"Sin empresa"; (map[e]=map[e]||[]).push(l); });
+  const empresas = Object.keys(map).sort((a,b)=>a.localeCompare(b,"es"));
+  $("leads-cuentas").innerHTML = `<div class="table-card"><table>
+    <thead><tr><th>Cuenta</th><th>Contactos</th><th>Último seguimiento</th><th>Pendientes abiertos</th><th style="text-align:right">Acciones</th></tr></thead>
+    <tbody>` + (empresas.length ? empresas.map(e=>{
+      const grupo = map[e];
+      const segs = S.seguimientos.filter(s=>grupo.some(l=>l.id===s.lead_id)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+      const pend = cuentaPendientes(e, grupo).filter(p=>!p.completado).length;
+      return `<tr class="row-click" data-cuenta="${esc(e)}">
+        <td><div class="t-strong">${esc(e)}</div></td>
+        <td>${grupo.length} <span class="t-sub">(${grupo.filter(l=>l.estado==="Activo").length} activos)</span></td>
+        <td>${segs[0] ? `<div style="font-size:12.5px">${fmtDate(segs[0].fecha)}</div><div class="t-sub">${esc(segs[0].fase)}</div>` : '<span class="t-sub">Sin registros</span>'}</td>
+        <td>${pend ? `<span class="pill" style="background:var(--amber-soft); color:var(--amber)">${pend}</span>` : '<span class="t-sub">0</span>'}</td>
+        <td><div class="row-actions"><button class="btn btn-outline btn-sm" data-cuenta2="${esc(e)}">Abrir</button></div></td>
+      </tr>`;
+    }).join("") : '<tr><td colspan="5" class="empty-note" style="padding:20px 16px">No hay cuentas que coincidan con los filtros.</td></tr>')
+    + `</tbody></table></div>`;
+  document.querySelectorAll("[data-cuenta]").forEach(tr=>tr.addEventListener("click",()=>openCuenta(tr.dataset.cuenta)));
+  document.querySelectorAll("[data-cuenta2]").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); openCuenta(b.dataset.cuenta2); }));
+}
+
+function openCuenta(nombre){ openCuentaName = nombre; renderCuentaDrawer(); $("drawer-cuenta-back").classList.add("open"); }
+$("dc-close").addEventListener("click",()=>{ $("drawer-cuenta-back").classList.remove("open"); openCuentaName=null; });
+$("drawer-cuenta-back").addEventListener("click",e=>{ if(e.target===$("drawer-cuenta-back")){ $("drawer-cuenta-back").classList.remove("open"); openCuentaName=null; } });
+
+function renderCuentaDrawer(){
+  const e = openCuentaName; if(!e) return;
+  const grupo = S.leads.filter(l=>((l.empresa||"").trim()||"Sin empresa")===e);
+  $("dc-title").textContent = e;
+  $("dc-meta").textContent = grupo.length + " contacto(s) · " + grupo.filter(l=>l.estado==="Activo").length + " activo(s)";
+  $("dcp-fecha").value = "";
+
+  $("dc-contactos").innerHTML = grupo.length ? grupo.map(l=>{
+    const seg = lastSeg(l.id);
+    const disc = l.estado==="Descartado";
+    return `<div class="sub-item row-click" data-dc-lead="${l.id}" style="cursor:pointer">
+      <div class="s-head">
+        <div style="flex:1; min-width:0">
+          <div class="s-title">${esc(leadLabel(l))}</div>
+          <div class="t-sub">${[esc(l.puesto), esc(l.correo), esc(l.telefono)].filter(Boolean).join(" · ") || "—"}</div>
+        </div>
+        ${disc
+          ? '<span class="pill" style="background:var(--red-soft); color:var(--red)">Descartado</span>'
+          : `<span class="pill" style="background:var(--green-pale); color:var(--green)">${esc(l.fase)||"—"}</span>`}
+        <span class="t-sub" style="min-width:64px; text-align:right">${seg ? fmtDate(seg.fecha) : ""}</span>
+      </div>
+    </div>`;
+  }).join("") : '<div class="empty-note">Sin contactos en esta cuenta.</div>';
+  document.querySelectorAll("[data-dc-lead]").forEach(el=>el.addEventListener("click",()=>openDrawer(el.dataset.dcLead)));
+
+  const pends = cuentaPendientes(e, grupo);
+  $("dc-pendientes").innerHTML = pends.length ? pends.map(p=>{
+    const l = p.lead_id ? S.leads.find(x=>x.id===p.lead_id) : null;
+    return `<div class="sub-item ${p.completado?"done":""}">
+      <div class="s-head">
+        <input type="checkbox" class="check" data-toggle-pen="${p.id}" ${p.completado?"checked":""}>
+        <span class="s-title">${esc(p.descripcion)}</span>
+        <span class="t-sub">${l ? esc(leadLabel(l)) : "Cuenta"}</span>
+        <span class="t-sub">${fmtDate(p.fecha)}</span>
+        <button class="btn btn-outline btn-sm" data-del-pen="${p.id}">Eliminar</button>
+      </div>
+    </div>`;
+  }).join("") : '<div class="empty-note">Sin pendientes en esta cuenta.</div>';
+  bindDrawerActions();
+}
+
+$("dcp-add").addEventListener("click", async ()=>{
+  if(!openCuentaName) return;
+  const descripcion=$("dcp-desc").value.trim(); if(!descripcion){ toast("Escribe la descripción del pendiente."); return; }
+  const { error } = await db.from("pendientes").insert({ empresa:openCuentaName, descripcion, fecha:$("dcp-fecha").value||null, completado:false });
+  if(error){ toast("No se pudo agregar: "+error.message); return; }
+  $("dcp-desc").value="";
+  toast("Pendiente de cuenta agregado.");
+  await loadAll();
+});
 
 /* Vista pipeline: columnas por fase, tarjetas arrastrables */
 function renderLeadsKanban(){
