@@ -245,10 +245,21 @@
   .pk-chip{font-size:11px; font-weight:800; border-radius:999px; padding:4px 12px}
   .pkanban{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:start}
   .pk-col{border-radius:14px; padding:11px; min-height:180px}
-  .pk-col[data-pkcol="Pendiente"]{background:#FAECEA}
-  .pk-col[data-pkcol="En progreso"]{background:#FAF3E2}
-  .pk-col[data-pkcol="Necesita revisión"]{background:#E9EFF8}
-  .pk-col[data-pkcol="Terminado"]{background:#E7F3EB}
+  .pk-col[data-pkcol="Pendiente"],.pk-col[data-dpkcol="Pendiente"],.pk-col[data-lpcol="Pendiente"]{background:#FAECEA}
+  .pk-col[data-pkcol="En progreso"],.pk-col[data-dpkcol="En progreso"],.pk-col[data-lpcol="En progreso"]{background:#FAF3E2}
+  .pk-col[data-pkcol="Necesita revisión"],.pk-col[data-dpkcol="Necesita revisión"],.pk-col[data-lpcol="Necesita revisión"]{background:#E9EFF8}
+  .pk-col[data-pkcol="Terminado"],.pk-col[data-dpkcol="Terminado"],.pk-col[data-lpcol="Terminado"]{background:#E7F3EB}
+  .pk-mini{grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:8px}
+  .pk-mini .pk-col{padding:8px; min-height:110px}
+  .pk-mini .pk-card{padding:8px 9px; margin-bottom:6px}
+  .pk-mini .k-title{font-size:11.5px; margin-top:4px}
+  .pk-mini .pk-col-title{font-size:11px}
+  .dash-filtros{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px}
+  .df-btn{border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 14px; font-size:12px; font-weight:700; color:var(--ink-soft)}
+  .df-btn.active{background:var(--green); border-color:var(--green); color:#fff}
+  .df-rango{display:none; gap:6px; align-items:center}
+  .df-rango.visible{display:flex}
+  .df-rango input{padding:7px 9px; font-size:12px; width:auto}
   .pk-col.dragover{outline:2px dashed var(--green-mid); outline-offset:-4px}
   .pk-col-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:0 3px}
   .pk-col-title{font-family:var(--font-d); font-size:12px; font-weight:800}
@@ -473,7 +484,16 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-bottom:12px">Pendientes</h3>
+        <h3 style="margin-bottom:10px">Pendientes</h3>
+        <div class="dash-filtros">
+          <button class="df-btn active" id="df-hoy">Hoy</button>
+          <button class="df-btn" id="df-periodo">📅 Periodo</button>
+          <button class="df-btn" id="df-todos">Todos</button>
+          <div class="df-rango" id="df-rango">
+            <input type="date" id="df-desde"> <span class="t-sub">a</span> <input type="date" id="df-hasta">
+            <button class="btn btn-green btn-sm" id="df-aplicar">Aplicar</button>
+          </div>
+        </div>
         <div class="pkanban" id="dash-pk"></div>
       </div>
 
@@ -787,14 +807,8 @@
 
     <!-- Pendientes -->
     <div class="dpane" id="pane-pen">
-      <div class="inline-form">
-        <div class="row">
-          <input id="pen-desc" placeholder="Descripción del pendiente">
-          <input type="date" id="pen-fecha">
-          <button class="btn btn-green btn-sm" id="pen-add">Agregar</button>
-        </div>
-      </div>
-      <div id="pen-list"></div>
+      <button class="btn btn-green btn-sm" id="lp-add" style="margin-bottom:12px">+ Agregar pendiente</button>
+      <div class="pkanban pk-mini" id="lp-board"></div>
     </div>
 
     <!-- Cotizaciones -->
@@ -869,6 +883,29 @@
     <div class="modal-foot">
       <button class="btn btn-outline" id="proj-cancel">Cancelar</button>
       <button class="btn btn-green" id="proj-save">Guardar proyecto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: PENDIENTE DE LEAD / VIP / CUENTA ================= -->
+<div class="modal-back" id="modal-lp">
+  <div class="modal" style="width:min(560px,100%)">
+    <h3 id="lp-modal-title">Agregar pendiente</h3>
+    <div class="form-grid">
+      <div class="full"><label for="lp-titulo">Título del pendiente *</label><input id="lp-titulo"></div>
+      <div><label for="lp-resp">Responsable</label><input id="lp-resp"></div>
+      <div><label for="lp-tipo">Etiqueta de tipo</label><select id="lp-tipo"></select></div>
+      <div><label for="lp-limite">Fecha límite</label><input type="date" id="lp-limite"></div>
+      <div><label for="lp-real">Fecha de realización</label><input type="date" id="lp-real"></div>
+      <div><label for="lp-status">Estatus</label><select id="lp-status">
+        <option>Pendiente</option><option>En progreso</option><option>Necesita revisión</option><option>Terminado</option>
+      </select></div>
+      <div class="full"><label for="lp-notas">Notas importantes</label><textarea id="lp-notas" rows="3"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="lp-delete" style="margin-right:auto; display:none">Eliminar</button>
+      <button class="btn btn-outline" id="lp-cancel">Cancelar</button>
+      <button class="btn btn-green" id="lp-save">Guardar</button>
     </div>
   </div>
 </div>
@@ -954,14 +991,8 @@
     <h3 style="font-family:var(--font-d); font-size:15px; font-weight:800; margin:14px 0 8px">Contactos</h3>
     <div id="dc-contactos"></div>
     <h3 style="font-family:var(--font-d); font-size:15px; font-weight:800; margin:22px 0 8px">Pendientes de la cuenta</h3>
-    <div class="inline-form">
-      <div class="row">
-        <input id="dcp-desc" placeholder="Descripción del pendiente">
-        <input type="date" id="dcp-fecha">
-        <button class="btn btn-green btn-sm" id="dcp-add">Agregar</button>
-      </div>
-    </div>
-    <div id="dc-pendientes"></div>
+    <button class="btn btn-green btn-sm" id="lpc-add" style="margin-bottom:12px">+ Agregar pendiente</button>
+    <div class="pkanban pk-mini" id="lpc-board"></div>
   </div>
 </div>
 
@@ -1133,7 +1164,9 @@ function populateSelects(){
   const tipoOpts = S.tipos.map(t=>`<option>${esc(t.nombre)}</option>`).join("");
   $("cot-tipoprog").innerHTML = tipoOpts;
   $("p-tipoprog").innerHTML = tipoOpts;
-  $("pk-tipo").innerHTML = S.tpend.map(t=>`<option>${esc(t.nombre)}</option>`).join("");
+  const tpendOpts = S.tpend.map(t=>`<option>${esc(t.nombre)}</option>`).join("");
+  $("pk-tipo").innerHTML = tpendOpts;
+  $("lp-tipo").innerHTML = tpendOpts;
   $("fc-lead").innerHTML = '<option value="">Sin enlace</option>' + S.leads.map(l=>`<option value="${l.id}">${l.vip?"★ VIP · ":""}${esc(leadLabel(l))}${l.empresa?" · "+esc(l.empresa):""}</option>`).join("");
   const projEmpresas = [...new Set([...S.proyectos.map(p=>(p.empresa||"").trim()), ...S.leads.map(l=>(l.empresa||"").trim())].filter(Boolean))].sort();
   $("proj-empresas-list").innerHTML = projEmpresas.map(e=>`<option value="${esc(e)}">`).join("");
@@ -1266,7 +1299,7 @@ function renderDashboard(){
     ...S.pendientes.map(p=>({
       src:"lead", id:p.id, titulo:p.descripcion, fecha:p.fecha,
       estatus: p.estatus || (p.completado ? "Terminado" : "Pendiente"),
-      lead_id:p.lead_id, empresa:p.empresa
+      lead_id:p.lead_id, empresa:p.empresa, etiqueta:p.etiqueta
     })),
     ...S.ppend.map(x=>{
       const pr=S.proyectos.find(z=>z.id===x.proyecto_id);
@@ -1280,16 +1313,23 @@ function renderDashboard(){
       return l ? (l.vip?'<span class="vip-badge" style="font-size:8.5px; padding:1px 6px">★</span> ':"")+esc(leadLabel(l)) : ""; }
     return p.empresa ? "Cuenta · "+esc(p.empresa) : "";
   };
+  const pkFiltrados = pkItems.filter(x=>{
+    if(dashPkModo==="todos") return true;
+    if(dashPkModo==="hoy") return !!x.fecha && (x.fecha===today || (x.fecha<today && x.estatus!=="Terminado"));
+    if(dashPkModo==="periodo") return !!x.fecha && !!dashPkDesde && !!dashPkHasta && x.fecha>=dashPkDesde && x.fecha<=dashPkHasta;
+    return true;
+  });
   $("dash-pk").innerHTML = PK_COLS.map(colName=>{
-    let items=pkItems.filter(x=>x.estatus===colName).sort((a,b)=>(a.fecha||"9999").localeCompare(b.fecha||"9999"));
+    let items=pkFiltrados.filter(x=>x.estatus===colName).sort((a,b)=>(a.fecha||"9999").localeCompare(b.fecha||"9999"));
     let nota="";
     if(colName==="Terminado" && items.length>6){ nota=`<div class="t-sub" style="text-align:center; padding:4px 0">+${items.length-6} anteriores</div>`; items=items.slice(0,6); }
     return `<div class="pk-col" data-dpkcol="${colName}">
-      <div class="pk-col-head"><span class="pk-col-title">${colName}</span><span class="kcol-count">${pkItems.filter(x=>x.estatus===colName).length}</span></div>
+      <div class="pk-col-head"><span class="pk-col-title">${colName}</span><span class="kcol-count">${pkFiltrados.filter(x=>x.estatus===colName).length}</span></div>
       ${items.map(x=>{
         const late = x.fecha && x.fecha < today && x.estatus!=="Terminado";
         return `<div class="pk-card" draggable="true" data-dpk="${x.src}:${x.id}">
-          <div class="k-title" style="margin-top:0">${esc(x.titulo)}</div>
+          ${x.etiqueta?`<span class="k-tag" style="background:${tpendColor(x.etiqueta)}1A; color:${tpendColor(x.etiqueta)}">${esc(x.etiqueta)}</span>`:""}
+          <div class="k-title" style="margin-top:${x.etiqueta?"6px":"0"}">${esc(x.titulo)}</div>
           <div class="k-foot"><span class="${late?"late":""}">${x.fecha?fmtDate(x.fecha):""}</span></div>
           <div class="k-foot" style="margin-top:3px">${refPk(x)}</div>
         </div>`;
@@ -1509,31 +1549,9 @@ function renderCuentaDrawer(){
   }).join("") : '<div class="empty-note">Sin contactos en esta cuenta.</div>';
   document.querySelectorAll("[data-dc-lead]").forEach(el=>el.addEventListener("click",()=>openDrawer(el.dataset.dcLead)));
 
-  const pends = cuentaPendientes(e, grupo);
-  $("dc-pendientes").innerHTML = pends.length ? pends.map(p=>{
-    const l = p.lead_id ? S.leads.find(x=>x.id===p.lead_id) : null;
-    return `<div class="sub-item ${p.completado?"done":""}">
-      <div class="s-head">
-        <input type="checkbox" class="check" data-toggle-pen="${p.id}" ${p.completado?"checked":""}>
-        <span class="s-title">${esc(p.descripcion)}</span>
-        <span class="t-sub">${l ? esc(leadLabel(l)) : "Cuenta"}</span>
-        <span class="t-sub">${fmtDate(p.fecha)}</span>
-        <button class="btn btn-outline btn-sm" data-del-pen="${p.id}">Eliminar</button>
-      </div>
-    </div>`;
-  }).join("") : '<div class="empty-note">Sin pendientes en esta cuenta.</div>';
+  renderLpBoard("lpc-board", cuentaPendientes(e, grupo));
   bindDrawerActions();
 }
-
-$("dcp-add").addEventListener("click", async ()=>{
-  if(!openCuentaName) return;
-  const descripcion=$("dcp-desc").value.trim(); if(!descripcion){ toast("Escribe la descripción del pendiente."); return; }
-  const { error } = await db.from("pendientes").insert({ empresa:openCuentaName, descripcion, fecha:$("dcp-fecha").value||null, completado:false });
-  if(error){ toast("No se pudo agregar: "+error.message); return; }
-  $("dcp-desc").value="";
-  toast("Pendiente de cuenta agregado.");
-  await loadAll();
-});
 
 /* Vista pipeline: columnas por fase, tarjetas arrastrables */
 function renderLeadsKanban(){
@@ -1695,7 +1713,7 @@ function renderDrawer(){
   $("dr-descartar").style.display = disc ? "none" : "inline-block";
   $("dr-reactivar").style.display = disc ? "inline-block" : "none";
 
-  $("seg-fecha").value=todayISO(); $("pen-fecha").value=""; $("cot-fecha").value=todayISO(); $("ven-fecha").value=todayISO();
+  $("seg-fecha").value=todayISO(); $("cot-fecha").value=todayISO(); $("ven-fecha").value=todayISO();
   if(!disc) $("seg-fase").value = l.fase || S.fases[0]?.nombre || "";
 
   /* Seguimientos */
@@ -1711,17 +1729,8 @@ function renderDrawer(){
       ${s.comentario ? `<div class="s-note">${esc(s.comentario)}</div>` : ""}
     </div>`).join("") : '<div class="empty-note">Sin seguimientos registrados.</div>';
 
-  /* Pendientes */
-  const pens=S.pendientes.filter(p=>p.lead_id===l.id);
-  $("pen-list").innerHTML = pens.length ? pens.map(p=>`
-    <div class="sub-item ${p.completado?"done":""}">
-      <div class="s-head">
-        <input type="checkbox" class="check" data-toggle-pen="${p.id}" ${p.completado?"checked":""}>
-        <span class="s-title">${esc(p.descripcion)}</span>
-        <span class="t-sub">${fmtDate(p.fecha)}</span>
-        <button class="btn btn-outline btn-sm" data-del-pen="${p.id}">Eliminar</button>
-      </div>
-    </div>`).join("") : '<div class="empty-note">Sin pendientes para este lead.</div>';
+  /* Pendientes (kanban) */
+  renderLpBoard("lp-board", S.pendientes.filter(p=>p.lead_id===l.id));
 
   /* Cotizaciones */
   const cots=S.cotizaciones.filter(c=>c.lead_id===l.id);
@@ -1765,10 +1774,8 @@ function renderDrawer(){
 
 function bindDrawerActions(){
   document.querySelectorAll("[data-del-seg]").forEach(b=>b.onclick=async ()=>{ await db.from("seguimientos").delete().eq("id",b.dataset.delSeg); await loadAll(); });
-  document.querySelectorAll("[data-del-pen]").forEach(b=>b.onclick=async ()=>{ await db.from("pendientes").delete().eq("id",b.dataset.delPen); await loadAll(); });
   document.querySelectorAll("[data-del-cot]").forEach(b=>b.onclick=async ()=>{ await db.from("cotizaciones").delete().eq("id",b.dataset.delCot); await loadAll(); });
   document.querySelectorAll("[data-del-ven]").forEach(b=>b.onclick=async ()=>{ await db.from("ventas").delete().eq("id",b.dataset.delVen); await loadAll(); });
-  document.querySelectorAll("[data-toggle-pen]").forEach(c=>c.onchange=async ()=>{ await db.from("pendientes").update({completado:c.checked, estatus:c.checked?"Terminado":"Pendiente"}).eq("id",c.dataset.togglePen); await loadAll(); });
   document.querySelectorAll("[data-cot-status]").forEach(s=>s.onchange=async ()=>{ await db.from("cotizaciones").update({estatus:s.value}).eq("id",s.dataset.cotStatus); toast("Estatus de propuesta actualizado."); await loadAll(); });
   document.querySelectorAll("[data-ven-status]").forEach(s=>s.onchange=async ()=>{ await db.from("ventas").update({estatus_cobro:s.value}).eq("id",s.dataset.venStatus); toast("Estatus de cobro actualizado."); await loadAll(); });
 }
@@ -1785,14 +1792,92 @@ $("seg-add").addEventListener("click", async ()=>{
   await loadAll();
 });
 
-/* Alta de pendiente */
-$("pen-add").addEventListener("click", async ()=>{
-  if(!openLeadId) return;
-  const descripcion=$("pen-desc").value.trim(); if(!descripcion){ toast("Escribe la descripción del pendiente."); return; }
-  const { error } = await db.from("pendientes").insert({ lead_id:openLeadId, descripcion, fecha:$("pen-fecha").value||null, completado:false });
-  if(error){ toast("No se pudo agregar: "+error.message); return; }
-  $("pen-desc").value="";
-  toast("Pendiente agregado.");
+/* ===== Pendientes de leads/VIP/cuentas: kanban + modal (formato de proyectos) ===== */
+let editingLpId=null, lpCtx=null;
+function lpEstatus(p){ return p.estatus || (p.completado ? "Terminado" : "Pendiente"); }
+function renderLpBoard(contId, items){
+  const cont=$(contId); if(!cont) return;
+  cont.innerHTML = PK_COLS.map(colName=>{
+    const del=items.filter(x=>lpEstatus(x)===colName);
+    return `<div class="pk-col" data-lpcol="${colName}">
+      <div class="pk-col-head"><span class="pk-col-title">${colName}</span><span class="kcol-count">${del.length}</span></div>
+      ${del.map(x=>{
+        const late = x.fecha && x.fecha < todayISO() && lpEstatus(x)!=="Terminado";
+        const tc=tpendColor(x.etiqueta);
+        return `<div class="pk-card" draggable="true" data-lp="${x.id}">
+          ${x.etiqueta?`<span class="k-tag" style="background:${tc}1A; color:${tc}">${esc(x.etiqueta)}</span>`:""}
+          <div class="k-title">${esc(x.descripcion)}</div>
+          <div class="k-foot"><span class="${late?"late":""}">${x.fecha?fmtDate(x.fecha):""}</span><span>${esc(x.responsable)||""}</span></div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+  cont.querySelectorAll(".pk-card").forEach(card=>{
+    card.addEventListener("dragstart", e=>{ card.classList.add("dragging"); e.dataTransfer.setData("text/plain", card.dataset.lp); });
+    card.addEventListener("dragend", ()=>card.classList.remove("dragging"));
+    card.addEventListener("click", ()=>openLpModal(S.pendientes.find(z=>z.id===card.dataset.lp), null));
+  });
+  cont.querySelectorAll(".pk-col").forEach(colEl=>{
+    colEl.addEventListener("dragover", e=>{ e.preventDefault(); colEl.classList.add("dragover"); });
+    colEl.addEventListener("dragleave", ()=>colEl.classList.remove("dragover"));
+    colEl.addEventListener("drop", async e=>{
+      e.preventDefault(); colEl.classList.remove("dragover");
+      const id=e.dataTransfer.getData("text/plain");
+      const x=S.pendientes.find(z=>z.id===id); if(!x) return;
+      const destino=colEl.dataset.lpcol;
+      if(lpEstatus(x)===destino) return;
+      const upd={ estatus:destino, completado:destino==="Terminado" };
+      if(destino==="Terminado" && !x.fecha_realizacion) upd.fecha_realizacion=todayISO();
+      await db.from("pendientes").update(upd).eq("id",id);
+      toast("Pendiente movido a: "+destino+".");
+      await loadAll();
+    });
+  });
+}
+function openLpModal(x, ctx){
+  editingLpId = x ? x.id : null;
+  lpCtx = ctx || (x ? { lead_id:x.lead_id||null, empresa:x.empresa||null } : null);
+  $("lp-modal-title").textContent = x ? "Editar pendiente" : "Agregar pendiente";
+  $("lp-titulo").value=x?.descripcion||""; $("lp-resp").value=x?.responsable||"";
+  $("lp-tipo").value=x?.etiqueta||S.tpend[0]?.nombre||"";
+  $("lp-limite").value=x?.fecha||""; $("lp-real").value=x?.fecha_realizacion||"";
+  $("lp-status").value=x?lpEstatus(x):"Pendiente";
+  $("lp-notas").value=x?.notas||"";
+  $("lp-delete").style.display = x ? "inline-block" : "none";
+  $("modal-lp").classList.add("open");
+}
+$("lp-add").addEventListener("click",()=>{ if(openLeadId) openLpModal(null, { lead_id:openLeadId, empresa:null }); });
+$("lpc-add").addEventListener("click",()=>{ if(openCuentaName) openLpModal(null, { lead_id:null, empresa:openCuentaName }); });
+$("lp-cancel").addEventListener("click",()=>$("modal-lp").classList.remove("open"));
+$("modal-lp").addEventListener("click",e=>{ if(e.target===$("modal-lp")) $("modal-lp").classList.remove("open"); });
+$("lp-save").addEventListener("click", async ()=>{
+  const titulo=$("lp-titulo").value.trim(); if(!titulo){ toast("Escribe el título del pendiente."); return; }
+  const estatus=$("lp-status").value;
+  const payload={
+    descripcion:titulo, responsable:$("lp-resp").value.trim(), etiqueta:$("lp-tipo").value,
+    fecha:$("lp-limite").value||null,
+    fecha_realizacion:$("lp-real").value || (estatus==="Terminado" ? todayISO() : null),
+    estatus, completado:estatus==="Terminado",
+    notas:$("lp-notas").value.trim()
+  };
+  let error;
+  if(editingLpId){ ({error} = await db.from("pendientes").update(payload).eq("id",editingLpId)); }
+  else{
+    payload.lead_id = lpCtx?.lead_id||null;
+    payload.empresa = lpCtx?.empresa||null;
+    ({error} = await db.from("pendientes").insert(payload));
+  }
+  if(error){ toast("No se pudo guardar: "+error.message); return; }
+  $("modal-lp").classList.remove("open");
+  toast(editingLpId ? "Pendiente actualizado." : "Pendiente agregado.");
+  await loadAll();
+});
+$("lp-delete").addEventListener("click", async ()=>{
+  if(!editingLpId) return;
+  if(!confirm("¿Eliminar este pendiente?")) return;
+  await db.from("pendientes").delete().eq("id",editingLpId);
+  $("modal-lp").classList.remove("open");
+  toast("Pendiente eliminado.");
   await loadAll();
 });
 
@@ -1889,6 +1974,26 @@ $("dr-reactivar").addEventListener("click", async ()=>{
 
 /* ==================== PROYECTOS ==================== */
 let openProyectoId = null, editingProjId = null, projPortadaData = null, pdCalMonth = null, editingPkId = null;
+let dashPkModo = "hoy", dashPkDesde = null, dashPkHasta = null;
+function dfSync(){
+  $("df-hoy").classList.toggle("active", dashPkModo==="hoy");
+  $("df-periodo").classList.toggle("active", dashPkModo==="periodo");
+  $("df-todos").classList.toggle("active", dashPkModo==="todos");
+  $("df-rango").classList.toggle("visible", dashPkModo==="periodo");
+}
+$("df-hoy").addEventListener("click",()=>{ dashPkModo="hoy"; dfSync(); renderDashboard(); });
+$("df-todos").addEventListener("click",()=>{ dashPkModo="todos"; dfSync(); renderDashboard(); });
+$("df-periodo").addEventListener("click",()=>{
+  dashPkModo="periodo";
+  if(!$("df-desde").value) $("df-desde").value=todayISO();
+  if(!$("df-hasta").value) $("df-hasta").value=todayISO();
+  dashPkDesde=$("df-desde").value; dashPkHasta=$("df-hasta").value;
+  dfSync(); renderDashboard();
+});
+$("df-aplicar").addEventListener("click",()=>{
+  dashPkDesde=$("df-desde").value||null; dashPkHasta=$("df-hasta").value||null;
+  renderDashboard();
+});
 const PK_COLS = ["Pendiente","En progreso","Necesita revisión","Terminado"];
 const nowTime = () => new Date().toTimeString().slice(0,5);
 
