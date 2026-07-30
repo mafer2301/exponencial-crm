@@ -213,7 +213,19 @@
   .g-dhead .dnum{font-size:11px; color:var(--ink-soft)}
   .g-day{padding:0; justify-content:center; background:#FBFCFA}
   .g-day.today{background:var(--green-pale)}
-  .g-bar{width:82%; height:20px; border-radius:6px}
+  .g-bar{width:88%; height:20px; border-radius:6px; color:#fff; font-size:9.5px; font-weight:800; display:flex; align-items:center; justify-content:center}
+  .g-modhead{grid-column:1/-1; font-family:var(--font-d); font-weight:800; font-size:12px; padding:9px 9px 7px; border-bottom:1px solid var(--line); background:transparent; display:flex; align-items:center; gap:10px}
+  .g-modhead .g-rango{font-family:var(--font-b); font-weight:700; font-size:10.5px; color:var(--muted)}
+  .mod-range{font-size:10.5px; font-weight:700; color:var(--muted); margin:-6px 0 10px}
+  .mod-card.clic{cursor:pointer; transition:box-shadow .12s}
+  .mod-card.clic:hover{box-shadow:0 3px 10px rgba(20,30,24,.14)}
+  .ses-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .ses-card{background:#F7F8F6; border-radius:12px; padding:12px 10px; text-align:center; border-top:3px solid var(--green)}
+  .ses-card .sc-num{font-family:var(--font-d); font-weight:800; font-size:13px}
+  .ses-card .sc-fecha{font-size:12px; font-weight:700; margin-top:4px}
+  .ses-card .sc-hora{font-size:11px; color:var(--muted); font-weight:600; margin-top:2px}
+  .ses-card .sc-prof{font-size:10.5px; color:var(--ink-soft); font-weight:700; margin-top:5px}
+  @media (max-width:640px){ .ses-grid{grid-template-columns:repeat(2,1fr)} }
 
   /* Distribución por módulo */
   .mod-grid{display:flex; gap:12px; overflow-x:auto; padding-bottom:6px}
@@ -858,6 +870,15 @@
       <button class="btn btn-outline" id="proj-cancel">Cancelar</button>
       <button class="btn btn-green" id="proj-save">Guardar proyecto</button>
     </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: SESIONES DE UN GRUPO ================= -->
+<div class="modal-back" id="modal-ses">
+  <div class="modal" style="width:min(560px,100%)">
+    <h3 id="ses-title"></h3>
+    <div class="ses-grid" id="ses-grid" style="margin-top:6px"></div>
+    <div class="modal-foot"><button class="btn btn-outline" id="ses-close">Cerrar</button></div>
   </div>
 </div>
 
@@ -2177,9 +2198,9 @@ function renderProyectoDetalle(){
     }
     const DOWS=["","L","M","M","J","V"];
     const hoy=todayISO();
-    let html=`<div class="gantt" style="grid-template-columns:minmax(150px,1.3fr) minmax(120px,1fr) 58px 96px repeat(${dias.length}, 32px)">`;
+    let html=`<div class="gantt" style="grid-template-columns:minmax(150px,1.3fr) 58px 96px repeat(${dias.length}, 32px)">`;
     /* fila de meses */
-    html+=`<div class="g-cell g-month" style="grid-column:1/5"></div>`;
+    html+=`<div class="g-cell g-month" style="grid-column:1/4"></div>`;
     let i=0;
     while(i<dias.length){
       const mKey=dias[i].slice(0,7); let span=0;
@@ -2189,22 +2210,32 @@ function renderProyectoDetalle(){
       i+=span;
     }
     /* encabezados */
-    html+=`<div class="g-cell g-dhead" style="align-items:flex-start; padding-left:9px">Módulo</div>
-           <div class="g-cell g-dhead" style="align-items:flex-start; padding-left:9px">Profesor</div>
+    html+=`<div class="g-cell g-dhead" style="align-items:flex-start; padding-left:9px">Profesor</div>
            <div class="g-cell g-dhead">Grupo</div>
            <div class="g-cell g-dhead">Horario</div>`;
     dias.forEach(dia=>{
       const d=new Date(dia+"T00:00:00");
       html+=`<div class="g-cell g-dhead ${dia===hoy?"today":""}"><span>${DOWS[d.getDay()]}</span><span class="dnum">${d.getDate()}</span></div>`;
     });
-    /* una fila por clase */
-    cs.forEach(c=>{
-      html+=`<div class="g-cell g-desc strong">${esc(c.modulo)||"Clase"}</div>
-             <div class="g-cell g-desc">${esc(c.profesores)||"—"}</div>
-             <div class="g-cell g-desc" style="justify-content:center">${c.grupo?"G"+c.grupo:"—"}</div>
-             <div class="g-cell g-desc" style="font-variant-numeric:tabular-nums">${(c.hora_inicio&&c.hora_fin)?c.hora_inicio+"–"+c.hora_fin:(c.hora_inicio||"—")}</div>`;
-      dias.forEach(dia=>{
-        html+=`<div class="g-cell g-day ${dia===hoy?"today":""}">${c.fecha===dia?`<span class="g-bar" style="background:${col}" title="${esc(c.modulo)} · ${esc(c.profesores)}"></span>`:""}</div>`;
+    /* una fila por módulo + grupo; las sesiones como barras sobre la misma línea */
+    const ordenMods=projModOrden(p).filter(mName=>cs.some(c=>(c.modulo||"Sin módulo")===mName));
+    ordenMods.forEach((mName,mi)=>{
+      const delMod=cs.filter(c=>(c.modulo||"Sin módulo")===mName);
+      const fechasMod=delMod.filter(c=>c.fecha).map(c=>c.fecha).sort();
+      const rangoMod=fechasMod.length ? (fmtDate(fechasMod[0])+" – "+fmtDate(fechasMod[fechasMod.length-1])) : "sin fechas";
+      html+=`<div class="g-cell g-modhead" style="color:${col}"><span class="mod-num" style="background:${col}">${mi+1}</span>${esc(mName)}<span class="g-rango">${rangoMod}</span></div>`;
+      const gruposDel=[...new Set(delMod.map(c=>c.grupo||1))].sort((a,b)=>a-b);
+      gruposDel.forEach(g=>{
+        const delGrupo=delMod.filter(c=>(c.grupo||1)===g).sort((a,b)=>(a.num_sesion||0)-(b.num_sesion||0));
+        const profes=[...new Set(delGrupo.flatMap(c=>splitProfes(c.profesores)))].join(", ");
+        const horario=[...new Set(delGrupo.map(c=>(c.hora_inicio&&c.hora_fin)?c.hora_inicio+"–"+c.hora_fin:null).filter(Boolean))].join(" / ");
+        html+=`<div class="g-cell g-desc">${esc(profes)||"—"}</div>
+               <div class="g-cell g-desc" style="justify-content:center; font-weight:800">G${g}</div>
+               <div class="g-cell g-desc" style="font-variant-numeric:tabular-nums">${horario||"—"}</div>`;
+        dias.forEach(dia=>{
+          const enDia=delGrupo.filter(c=>c.fecha===dia);
+          html+=`<div class="g-cell g-day ${dia===hoy?"today":""}">${enDia.length?`<span class="g-bar" style="background:${col}" title="${esc(mName)} · Sesión ${enDia.map(c=>c.num_sesion||"").join(",")} · ${esc(profes)}">S${enDia.map(c=>c.num_sesion||"?").join(",")}</span>`:""}</div>`;
+        });
       });
     });
     html+=`</div>`;
@@ -2215,14 +2246,17 @@ function renderProyectoDetalle(){
   const mods=projModOrden(p).filter(mName=>cs.some(c=>(c.modulo||"Sin módulo")===mName));
   $("pd-modulos").innerHTML = mods.length ? mods.map((mName,mi)=>{
     const del=cs.filter(c=>(c.modulo||"Sin módulo")===mName);
+    const fechasM=del.filter(c=>c.fecha).map(c=>c.fecha).sort();
+    const rango=fechasM.length ? `Del ${fmtDate(fechasM[0])} al ${fmtDate(fechasM[fechasM.length-1])}` : "Fechas por definir";
     const gruposM={}; del.forEach(c=>{ const g=c.grupo||0; (gruposM[g]=gruposM[g]||[]).push(c); });
     return `<div class="mod-col">
       <div class="mod-title"><span class="mod-num" style="background:${col}">${mi+1}</span>${esc(mName)}</div>
+      <div class="mod-range">${rango}</div>
       ${Object.keys(gruposM).sort((a,b)=>a-b).map(g=>{
         const cls=gruposM[g];
         const profes=[...new Set(cls.flatMap(c=>splitProfes(c.profesores)))];
         const horario=[...new Set(cls.map(c=>(c.hora_inicio&&c.hora_fin)?c.hora_inicio+"–"+c.hora_fin:null).filter(Boolean))].join(" / ");
-        return `<div class="mod-card" style="border-left-color:${col}">
+        return `<div class="mod-card clic" style="border-left-color:${col}" data-ses-mod="${esc(mName)}" data-ses-grupo="${g}" title="Ver sesiones">
           <div class="m-g">${g==="0"?"Todos los grupos":"Grupo "+g}</div>
           <div class="m-h">${horario||""} · ${cls.length} sesión(es)</div>
           ${profes.length ? profes.map(n=>avatarHtml(n, profMap[n]||"#6B7770")).join("") : '<div class="m-h">Profesor por asignar</div>'}
@@ -2230,9 +2264,30 @@ function renderProyectoDetalle(){
       }).join("")}
     </div>`;
   }).join("") : '<div class="empty-note">Captura las clases del programa para ver su distribución.</div>';
+  document.querySelectorAll("[data-ses-mod]").forEach(card=>card.addEventListener("click",()=>{
+    openSesionesModal(p, card.dataset.sesMod, Number(card.dataset.sesGrupo));
+  }));
 
   renderPkBoard(p, col);
 }
+
+/* ---------- Modal de sesiones de un grupo ---------- */
+function openSesionesModal(p, modNombre, grupo){
+  const col=p.color||"#1D5B3C";
+  const cls=projClases(p).filter(c=>(c.modulo||"Sin módulo")===modNombre && (c.grupo||0)===grupo)
+    .sort((a,b)=>(a.num_sesion||0)-(b.num_sesion||0) || (a.fecha||"9999").localeCompare(b.fecha||"9999"));
+  $("ses-title").textContent = modNombre + " · " + (grupo===0 ? "Todos los grupos" : "Grupo " + grupo);
+  $("ses-grid").innerHTML = cls.length ? cls.map(c=>`
+    <div class="ses-card" style="border-top-color:${col}">
+      <div class="sc-num">Sesión ${c.num_sesion||"?"}</div>
+      <div class="sc-fecha">${c.fecha ? fmtDate(c.fecha) : "Por definir"}</div>
+      <div class="sc-hora">${(c.hora_inicio&&c.hora_fin)?c.hora_inicio+"–"+c.hora_fin:(c.hora_inicio||"")}</div>
+      ${c.profesores?`<div class="sc-prof">${esc(c.profesores)}</div>`:""}
+    </div>`).join("") : '<div class="empty-note">Sin sesiones registradas.</div>';
+  $("modal-ses").classList.add("open");
+}
+$("ses-close").addEventListener("click",()=>$("modal-ses").classList.remove("open"));
+$("modal-ses").addEventListener("click",e=>{ if(e.target===$("modal-ses")) $("modal-ses").classList.remove("open"); });
 
 /* ---------- Kanban de pendientes del proyecto ---------- */
 function renderPkBoard(p, col){
